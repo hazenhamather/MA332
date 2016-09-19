@@ -1,0 +1,2 @@
+Contained in this folder are methods of root approximation given specific tolerances as well as a root_table function
+as well as a velocity function that relies on a given P-code called projectile landing.
