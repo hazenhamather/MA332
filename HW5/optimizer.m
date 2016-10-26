@@ -23,6 +23,8 @@ function [xstar,fxstar,status] = optimizer(f,gf,Hf,x0,gradTol,xTol,itrBound,dpar
 %status - a status variable that will be 0 if the algorithm terminates with
 %   either the gradient or iteration tolerance satisfied, will be nonzero
 %   otherwise
+
+%Setting some variables
 status = 1;
 xstar = x0;
 fxstar = f(xstar);
@@ -50,84 +52,62 @@ end
 if ~exist('loud') || isempty(loud) || loud < 0
     loud = 0;
 end
+
+%Checking for a correct initial guess
 if norm(gf(xstar)) < gradTol
     return;
 end
+%Making sure ireBound was not zero or negative
 if numitr >= itrBound
     fprintf(2,'Exceeded number of allowed iterations\n');
     return;
 end
+
+%Entering Steepest Descent
 if dparam == 1
-    shouldContinue = true;
+    shouldContinue = true; %Stopping variable
     xkOld = x0;
     while shouldContinue
         dk = -gf(xkOld);
         if dk == 0
             return;
         end
-        switch lparam
-            case 1
+        switch lparam %checking for which lparam we were given
+            case 1 %constant alpha
                 alpha = 1;
-            case 2
+            case 2 %interpolating polynomial for alpha
                 alpha = (-3*f(xkOld)+4*f(xkOld+dk)-f(xkOld+2*dk))/(-2*f(xkOld)+...
                 4*f(xkOld+dk)-2*f(xkOld+2*dk));
-            case 3
+            case 3 %bisection method for alpha if needed
                 if gf(xkOld)*gf(xkOld + dk) > 0
                     alpha = 1;
                 else
                     [alpha,~,~] = alphaBisection(gf,dk,xkOld,0,1);
                 end
-            otherwise
+            otherwise %This will trip if the user provides an incorrect lparam
                 fprintf(2,'lparam must be between 1 and 3 inclusive\n');
                 return;
         end
-        xkNew = xkOld + alpha * dk;
-        xtempOld = xkOld;
+        xkNew = xkOld + alpha * dk; %getting next x_k
+        xtempOld = xkOld; %setting temporary variable for old x_k
         xkOld = xkNew;
         numitr = numitr + 1;
-        switch loud
-            case 1
-                switch lparam
-                    case 1
-                        if numitr - 1 == 0
-                            fprintf('Optimization method:\n');
-                            fprintf('Search Direction: Steepest Descent\n');
-                            fprintf('Step Length Selection: Constant alpha = 1\n\n\n');
-                        end
-                    case 2
-                        if numitr - 1 == 0
-                            fprintf('Optimization method:\n');
-                            fprintf('Search Direction: Steepest Descent\n');
-                            fprintf('Step Length Selection: alpha = %f\n\n\n',alpha);
-                        end
-                    case 3
-                        if numitr - 1 == 0
-                            fprintf('Optimization method:\n');
-                            fprintf('Search Direction: Steepest Descent\n');
-                            fprintf('Step Length Selection: alpha = %f\n\n\n',alpha);
-                        end
-                end               
+        switch loud %does the user want output?
+            case {1,2}
+                if lparam == 1
+                    if numitr - 1 == 0
+                        fprintf('Optimization method:\n');
+                        fprintf('Search Direction: Steepest Descent\n');
+                        fprintf('Step Length Selection: Constant alpha = 1\n\n\n');
+                    end
+                else
+                    fprintf('Optimization method:\n');
+                    fprintf('Search Direction: Steepest Descent\n');
+                    fprintf('Step Length Selection: alpha = %f\n\n\n',alpha);
+                end
+        end
+        switch loud  %more output            
             case 2
-                switch lparam
-                    case 1
-                        if numitr - 1 == 0
-                            fprintf('Optimization method:\n');
-                            fprintf('Search Direction: Steepest Descent\n');
-                            fprintf('Step Length Selection: Constant alpha = 1\n\n\n');
-                        end
-                    case 2
-                        if numitr - 1 == 0
-                            fprintf('Optimization method:\n');
-                            fprintf('Search Direction: Steepest Descent\n');
-                            fprintf('Step Length Selection: alpha = %f\n\n\n',alpha);
-                        end
-                    case 3
-                        if numitr - 1 == 0
-                            fprintf('Optimization method:\n');
-                            fprintf('Search Direction: Steepest Descent\n');
-                            fprintf('Step Length Selection: alpha = %f\n\n\n',alpha);
-                        end
-                end 
                 fprintf('Iteration %d\n',numitr-1);
                 fprintf('x_k = (%f)\n',xtempOld);
                 fprintf('d = (%f)\n',dk);
@@ -136,21 +116,22 @@ if dparam == 1
                 fprintf('norm(grad f)=%f, xdiff=%f\n\n\n',norm(gf(xkNew)),abs(xkNew-xtempOld));
         end
         if norm(gf(xkNew)) < gradTol || abs(xkNew - xtempOld) < xTol
+            %Checking tolerances to see if we satisfied any criteria ^
             status = 0;
             xstar = xkNew;
             fxstar = f(xstar);
-            gradientCriteriaMet = true;
+            gradientCriteriaMet = true; %Flag for final output
             break;
         end
-        if numitr > itrBound
+        if numitr > itrBound %did we reach our iteration limit?
             xstar = xkNew;
             fxstar = f(xstar);
-            iterationLimitReached = true;
-            return;
+            iterationLimitReached = true; %Flag for final output
+            break;
         end
     end
-    if loud == 1 || loud == 2
-        fprintf('Operation Terminated\n');
+    if loud == 1 || loud == 2 %Final output if specified by user
+        fprintf('Optimization Terminated\n');
         fprintf('Total Iterations: %d\n', numitr);
         if status == 0
             fprintf('Status: Successful\n');
@@ -164,6 +145,18 @@ if dparam == 1
             end
         end
     end
+    
+    %The above comments in the Steepest Descent alrogithm apply to the next
+    %two. In retrospect, after writing these comments, I realized that I
+    %could have written this code to be about 1/3 as long as it currently
+    %is. I should have put all of the initial print statements at the top
+    %of the file before entering the methods. This would have allowed me to
+    %execute methods, store every result into a vector, and print output
+    %from that vector. If memory or readability was an immediate issue, I
+    %would change the code as I proposed but as of right now, I have plenty of
+    %memory and seeing as this code is approximately 13kB in size, I doubt
+    %many people are hurting for it.
+    
 %Newton Direction
 elseif dparam == 2
     shouldContinue = true;
@@ -194,49 +187,21 @@ elseif dparam == 2
         xkOld = xkNew;
         numitr = numitr + 1;
         switch loud
-            case 1
-                switch lparam
-                    case 1
-                        if numitr - 1 == 0
-                            fprintf('Optimization method:\n');
-                            fprintf('Search Direction: Steepest Descent\n');
-                            fprintf('Step Length Selection: Constant alpha = 1\n\n\n');
-                        end
-                    case 2
-                        if numitr - 1 == 0
-                            fprintf('Optimization method:\n');
-                            fprintf('Search Direction: Steepest Descent\n');
-                            fprintf('Step Length Selection: alpha = %f\n\n\n',alpha);
-                        end
-                    case 3
-                        if numitr - 1 == 0
-                            fprintf('Optimization method:\n');
-                            fprintf('Search Direction: Steepest Descent\n');
-                            fprintf('Step Length Selection: alpha = %f\n\n\n',alpha);
-                        end
-                end               
-            case 2
-                switch lparam
-                    case 1
-                        if numitr - 1 == 0
-                            fprintf('Optimization method:\n');
-                            fprintf('Search Direction: Steepest Descent\n');
-                            fprintf('Step Length Selection: Constant alpha = 1\n\n\n');
-                        end
-                    case 2
-                        if numitr - 1 == 0
-                            fprintf('Optimization method:\n');
-                            fprintf('Search Direction: Steepest Descent\n');
-                            fprintf('Step Length Selection: alpha = %f\n\n\n',alpha);
-                        end
-                    case 3
-                        if numitr - 1 == 0
-                            fprintf('Optimization method:\n');
-                            fprintf('Search Direction: Steepest Descent\n');
-                            fprintf('Step Length Selection: alpha = %f\n\n\n',alpha);
-                        end
+            case {1,2}
+                if lparam == 1
+                    if numitr - 1 == 0
+                        fprintf('Optimization method:\n');
+                        fprintf('Search Direction: Steepest Descent\n');
+                        fprintf('Step Length Selection: Constant alpha = 1\n\n\n');
+                    end
+                else
+                    fprintf('Optimization method:\n');
+                    fprintf('Search Direction: Steepest Descent\n');
+                    fprintf('Step Length Selection: alpha = %f\n\n\n',alpha);
                 end
-                
+        end
+        switch loud              
+            case 2
                 fprintf('Iteration %d\n',numitr-1);
                 fprintf('x_k = (%f)\n',xtempOld);
                 fprintf('d = (%f)\n',dk);
@@ -257,7 +222,7 @@ elseif dparam == 2
                 end
     end
     if loud == 1 || loud == 2
-        fprintf('Operation Terminated\n');
+        fprintf('Optimization Terminated\n');
         fprintf('Total Iterations: %d\n', numitr);
         if status == 0
             fprintf('Status: Successful\n');
@@ -304,48 +269,21 @@ elseif dparam == 3
         deltax = xkNew - xtempOld;
         Hf = Hf + ((deltagf*deltagf')/(deltagf'*deltax))-((Hf*(deltax*deltax')*Hf)/(deltax'*Hf*deltax));
         switch loud
-            case 1
-                switch lparam
-                    case 1
-                        if numitr - 1 == 0
-                            fprintf('Optimization method:\n');
-                            fprintf('Search Direction: Steepest Descent\n');
-                            fprintf('Step Length Selection: Constant alpha = 1\n\n\n');
-                        end
-                    case 2
-                        if numitr - 1 == 0
-                            fprintf('Optimization method:\n');
-                            fprintf('Search Direction: Steepest Descent\n');
-                            fprintf('Step Length Selection: alpha = %f\n\n\n',alpha);
-                        end
-                    case 3
-                        if numitr - 1 == 0
-                            fprintf('Optimization method:\n');
-                            fprintf('Search Direction: Steepest Descent\n');
-                            fprintf('Step Length Selection: alpha = %f\n\n\n',alpha);
-                        end
-                end               
+            case {1,2}
+                if lparam == 1
+                    if numitr - 1 == 0
+                        fprintf('Optimization method:\n');
+                        fprintf('Search Direction: Steepest Descent\n');
+                        fprintf('Step Length Selection: Constant alpha = 1\n\n\n');
+                    end
+                else
+                    fprintf('Optimization method:\n');
+                    fprintf('Search Direction: Steepest Descent\n');
+                    fprintf('Step Length Selection: alpha = %f\n\n\n',alpha);
+                end
+        end
+        switch loud              
             case 2
-                switch lparam
-                    case 1
-                        if numitr - 1 == 0
-                            fprintf('Optimization method:\n');
-                            fprintf('Search Direction: Steepest Descent\n');
-                            fprintf('Step Length Selection: Constant alpha = 1\n\n\n');
-                        end
-                    case 2
-                        if numitr - 1 == 0
-                            fprintf('Optimization method:\n');
-                            fprintf('Search Direction: Steepest Descent\n');
-                            fprintf('Step Length Selection: alpha = %f\n\n\n',alpha);
-                        end
-                    case 3
-                        if numitr - 1 == 0
-                            fprintf('Optimization method:\n');
-                            fprintf('Search Direction: Steepest Descent\n');
-                            fprintf('Step Length Selection: alpha = %f\n\n\n',alpha);
-                        end
-                end 
                 fprintf('Iteration %d\n',numitr-1);
                 fprintf('x_k = (%f)\n',xtempOld);
                 fprintf('d = (%f)\n',dk);
@@ -357,16 +295,18 @@ elseif dparam == 3
             status = 0;
             xstar = xkNew;
             fxstar = f(xstar);
+            gradientCriteriaMet = true;
             break;
         end
         if numitr > itrBound
             xstar = xkNew;
             fxstar = f(xstar);
-            return;
+            iterationLimitReached = true;
+            break;
         end
     end
     if loud == 1 || loud == 2
-        fprintf('Operation Terminated\n');
+        fprintf('Optimization Terminated\n');
         fprintf('Total Iterations: %d\n', numitr);
         if status == 0
             fprintf('Status: Successful\n');
