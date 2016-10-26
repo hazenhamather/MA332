@@ -236,7 +236,6 @@ elseif dparam == 2
                             fprintf('Step Length Selection: alpha = %f\n\n\n',alpha);
                         end
                 end
-        end
                 
                 fprintf('Iteration %d\n',numitr-1);
                 fprintf('x_k = (%f)\n',xtempOld);
@@ -244,6 +243,7 @@ elseif dparam == 2
                 fprintf('alpha = %f\n',alpha);
                 fprintf('x_k+1 = (%f)\n',xkNew);
                 fprintf('norm(grad f)=%f, xdiff=%f\n\n\n',norm(gf(xkNew)),abs(xkNew-xtempOld));
+        end
                 if norm(gf(xkNew)) < gradTol || abs(xkNew - xtempOld) < xTol
                     status = 0;
                     xstar = xkNew;
